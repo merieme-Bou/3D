@@ -9,35 +9,25 @@ SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Load texture
-texture = pygame.image.load('texture/bricks.png').convert()
+texture = pygame.image.load('texture/bricks.png').convert_alpha()
 
-
-def lerp(a, b, r, t):
-    return a * (1 - t) + b * t
-
-
-class TextureCoordinate:
+class Vec2D:
     def __init__(self, u, v):
         self.u = u
         self.v = v
 
 
 class Vec3D:
-  def __init__(self, x, y, z):
+  def __init__(self, x, y, z, w):
     self.x = x
     self.y = y
     self.z = z
+    self.w = w
 
 class Triangle:
-    def __init__(self, p1, p2, p3,
-                 texcoord1, texcoord2, texcoord3):
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-
-        self.texcoord1 = texcoord1
-        self.texcoord2 = texcoord2
-        self.texcoord3 = texcoord3
+  def __init__(self, p0, p1, p2, t0, t1, t2):
+        self.p = [p0, p1, p2]
+        self.t = [t0, t1, t2]
 class Mesh:
     def __init__(self):
         self.tris = []
@@ -52,7 +42,7 @@ class Engine:
   self.mesh_cube = Mesh()
   self.projection_matrix = Mat4x4()
   self.theta = 0
-  self.camera_position = Vec3D(0, 0, 0)
+  self.camera_position = Vec3D(0, 0, 0,0)
   self.fov = 90  # Initial field of view
 
  def multiply_matrix_vector(self, v_in, v_out, m):
@@ -63,59 +53,26 @@ class Engine:
 
 
  def init_cube(self):
-    texcoord1 = TextureCoordinate(0, 0)
-    texcoord2 = TextureCoordinate(0, 1)
-    texcoord3 = TextureCoordinate(1, 1)
-    texcoord4 = TextureCoordinate(0, 0)
-    texcoord5 = TextureCoordinate(1, 1)
-    texcoord6 = TextureCoordinate(1, 0)
-    texcoord7 = TextureCoordinate(1, 0)
-    texcoord8 = TextureCoordinate(1, 1)
-    texcoord9 = TextureCoordinate(1, 1)
     self.mesh_cube.tris = [
 
         #south
-         Triangle(Vec3D(0, 0, 0), Vec3D(0, 1, 0), Vec3D(1, 1, 0), texcoord1,
-        texcoord2,
-        texcoord3),
-         Triangle(Vec3D(0, 0, 0), Vec3D(1, 1, 0), Vec3D(1, 0, 0), texcoord4,
-        texcoord5,
-        texcoord6),
+         Triangle(Vec3D(0, 0, 0, 1), Vec3D(0, 1, 0, 1), Vec3D(1, 1, 0, 1), Vec2D(0,1), Vec2D(0,0), Vec2D(1,0) ),
+         Triangle(Vec3D(0, 0, 0, 1), Vec3D(1, 1, 0, 1), Vec3D(1, 0, 0, 1), Vec2D(0,1), Vec2D(1,0), Vec2D(1,1) ),
 #east
-         Triangle(Vec3D(1, 0, 0), Vec3D(1, 1, 0), Vec3D(1, 1, 1), texcoord7,
-        texcoord8,
-        texcoord9),
-         Triangle(Vec3D(1, 0, 0), Vec3D(1, 1, 1), Vec3D(1, 0, 1), texcoord1,
-        texcoord2,
-        texcoord3),
+         Triangle(Vec3D(1, 0, 0, 1), Vec3D(1, 1, 0, 1), Vec3D(1, 1, 1, 1), Vec2D(0,1), Vec2D(0,0), Vec2D(1,0) ),
+         Triangle(Vec3D(1, 0, 0, 1), Vec3D(1, 1, 1, 1), Vec3D(1, 0, 1, 1), Vec2D(0,1), Vec2D(1,0), Vec2D(1,1) ),
 #north
-         Triangle(Vec3D(1, 0, 1), Vec3D(1, 1, 1), Vec3D(0, 1, 1), texcoord1,
-        texcoord2,
-        texcoord3),
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 1, 1), Vec3D(0, 0, 1), texcoord1,
-        texcoord2,
-        texcoord3),
+         Triangle(Vec3D(1, 0, 1, 1), Vec3D(1, 1, 1, 1), Vec3D(0, 1, 1, 1), Vec2D(0,1), Vec2D(0,0), Vec2D(1,0) ),
+         Triangle(Vec3D(1, 0, 1, 1), Vec3D(0, 1, 1, 1), Vec3D(0, 0, 1, 1), Vec2D(0,1), Vec2D(1,0), Vec2D(1,1) ),
 
-         Triangle(Vec3D(0, 0, 1), Vec3D(0, 1, 1), Vec3D(0, 1, 0), texcoord1,
-        texcoord2,
-        texcoord3),
-         Triangle(Vec3D(0, 0, 1), Vec3D(0, 1, 0), Vec3D(0, 0, 0), texcoord1,
-        texcoord2,
-        texcoord3),
+         Triangle(Vec3D(0, 0, 1, 1), Vec3D(0, 1, 1, 1), Vec3D(0, 1, 0, 1), Vec2D(0,1), Vec2D(0,0), Vec2D(1,0) ),
+         Triangle(Vec3D(0, 0, 1, 1), Vec3D(0, 1, 0, 1), Vec3D(0, 0, 0, 1), Vec2D(0,1), Vec2D(1,0), Vec2D(1,1) ),
 
-         Triangle(Vec3D(0, 1, 0), Vec3D(0, 1, 1), Vec3D(1, 1, 1), texcoord1,
-        texcoord2,
-        texcoord3),
-         Triangle(Vec3D(0, 1, 0), Vec3D(1, 1, 1), Vec3D(1, 1, 0), texcoord1,
-        texcoord2,
-        texcoord3),
+         Triangle(Vec3D(0, 1, 0, 1), Vec3D(0, 1, 1, 1), Vec3D(1, 1, 1, 1), Vec2D(0,1), Vec2D(0,0), Vec2D(1,0) ),
+         Triangle(Vec3D(0, 1, 0, 1), Vec3D(1, 1, 1, 1), Vec3D(1, 1, 0, 1), Vec2D(0,1), Vec2D(1,0), Vec2D(1,1) ),
 
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 0, 1), Vec3D(0, 0, 0), texcoord1,
-        texcoord2,
-        texcoord3),
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 0, 0), Vec3D(1, 0, 0), texcoord1,
-        texcoord2,
-        texcoord3)
+         Triangle(Vec3D(1, 0, 1, 1), Vec3D(0, 0, 1, 1), Vec3D(0, 0, 0, 1), Vec2D(0,1), Vec2D(0,0), Vec2D(1,0) ),
+         Triangle(Vec3D(1, 0, 1, 1), Vec3D(0, 0, 0, 1), Vec3D(1, 0, 0, 1), Vec2D(0,1), Vec2D(1,0), Vec2D(1,1) )
      ]
 
  def update_projection_matrix(self):
@@ -130,9 +87,6 @@ class Engine:
         self.projection_matrix.m[3][2] = -far * near / (far - near)
         self.projection_matrix.m[2][3] = 1
         self.projection_matrix.m[3][3] = 0
-
- def lerp(a, b, r, t):
-     return a * (1 - t) + b * t
 
  def render(self):
     # clear display
@@ -164,33 +118,32 @@ class Engine:
     # draw triangles
     for tri in self.mesh_cube.tris:
         # rotate in Z
-        self.multiply_matrix_vector(tri.p1, tri.p1, rotation_z)
-        self.multiply_matrix_vector(tri.p2, tri.p2, rotation_z)
-        self.multiply_matrix_vector(tri.p3, tri.p3, rotation_z)
+        self.multiply_matrix_vector(tri.p[0], tri.p[0], rotation_z)
+        self.multiply_matrix_vector(tri.p[1], tri.p[1], rotation_z)
+        self.multiply_matrix_vector(tri.p[2], tri.p[2], rotation_z)
 
         # rotate in X
-        self.multiply_matrix_vector(tri.p1, tri.p1, rotation_x)
-        self.multiply_matrix_vector(tri.p2, tri.p2, rotation_x)
-        self.multiply_matrix_vector(tri.p3, tri.p3, rotation_x)
-
-
+        self.multiply_matrix_vector(tri.p[0], tri.p[0], rotation_x)
+        self.multiply_matrix_vector(tri.p[1], tri.p[1], rotation_x)
+        self.multiply_matrix_vector(tri.p[2], tri.p[2], rotation_x)
 
         # translate
-        translated = Triangle(Vec3D(tri.p1.x, tri.p1.y, tri.p1.z+100),
-                              Vec3D(tri.p2.x, tri.p2.y, tri.p2.z+100 ),
-                              Vec3D(tri.p3.x, tri.p3.y, tri.p3.z+100),   tri.texcoord1,
-   tri.texcoord2,
-   tri.texcoord3)
+        translated = Triangle(Vec3D(tri.p[0].x, tri.p[0].y, tri.p[0].z+100,tri.p[0].w),
+                              Vec3D(tri.p[1].x, tri.p[1].y, tri.p[1].z+100,tri.p[1].w ),
+                              Vec3D(tri.p[2].x, tri.p[2].y, tri.p[2].z+100,tri.p[2].w),
+                              Vec2D(tri.t[0].u, tri.t[0].v),
+                              Vec2D(tri.t[1].u, tri.t[1].v),
+                              Vec2D(tri.t[2].u, tri.t[2].u))
         # Use Cross-Product to get surface normal
-        vCamera = Vec3D(0, 0, 0)  # Replace with your camera position
-        normal = Vec3D(0, 0, 0)
-        line1 = Vec3D(translated.p2.x - translated.p1.x,
-                      translated.p2.y - translated.p1.y,
-                      translated.p2.z - translated.p1.z)
+        vCamera = Vec3D(0, 0, 0,1)  # Replace with your camera position
+        normal = Vec3D(0, 0, 0,1)
+        line1 = Vec3D(translated.p[1].x - translated.p[0].x,
+                      translated.p[1].y - translated.p[0].y,
+                      translated.p[1].z - translated.p[0].z,1)
 
-        line2 = Vec3D(translated.p3.x - translated.p1.x,
-                      translated.p3.y - translated.p1.y,
-                      translated.p3.z - translated.p1.z)
+        line2 = Vec3D(translated.p[2].x - translated.p[0].x,
+                      translated.p[2].y - translated.p[0].y,
+                      translated.p[2].z - translated.p[0].z,1)
 
         normal.x = line1.y * line2.z - line1.z * line2.y
         normal.y = line1.z * line2.x - line1.x * line2.z
@@ -203,75 +156,81 @@ class Engine:
         normal.z /= l
 
         # Check condition
-        if (normal.x * (translated.p1.x - vCamera.x) +
-                normal.y * (translated.p1.y - vCamera.y) +
-                normal.z * (translated.p1.z - vCamera.z) < 0.0):
+        if (normal.x * (translated.p[0].x - vCamera.x) +
+                normal.y * (translated.p[0].y - vCamera.y) +
+                normal.z * (translated.p[0].z - vCamera.z) < 0.0):
             # project
-            self.multiply_matrix_vector(translated.p1, translated.p1, self.projection_matrix)
-            self.multiply_matrix_vector(translated.p2, translated.p2, self.projection_matrix)
-            self.multiply_matrix_vector(translated.p3, translated.p3, self.projection_matrix)
+            self.multiply_matrix_vector(translated.p[0], translated.p[0], self.projection_matrix)
+            self.multiply_matrix_vector(translated.p[1], translated.p[1], self.projection_matrix)
+            self.multiply_matrix_vector(translated.p[2], translated.p[2], self.projection_matrix)
 
             # scale to view
             projected = translated
-            projected.p1.x += 1
-            projected.p1.y += 1
-            projected.p2.x += 1
-            projected.p2.y += 1
-            projected.p3.x += 1
-            projected.p3.y += 1
+            projected.p[0].x += 1
+            projected.p[0].y += 1
+            projected.p[1].x += 1
+            projected.p[1].y += 1
+            projected.p[2].x += 1
+            projected.p[2].y += 1
 
-            projected.p1.x *= 0.5 * SCREEN_WIDTH
-            projected.p1.y *= 0.5 * SCREEN_HEIGHT
-            projected.p2.x *= 0.5 * SCREEN_WIDTH
-            projected.p2.y *= 0.5 * SCREEN_HEIGHT
-            projected.p3.x *= 0.5 * SCREEN_WIDTH
-            projected.p3.y *= 0.5 * SCREEN_HEIGHT
+            projected.p[0].x *= 0.5 * SCREEN_WIDTH
+            projected.p[0].y *= 0.5 * SCREEN_HEIGHT
+            projected.p[1].x *= 0.5 * SCREEN_WIDTH
+            projected.p[1].y *= 0.5 * SCREEN_HEIGHT
+            projected.p[2].x *= 0.5 * SCREEN_WIDTH
+            projected.p[2].y *= 0.5 * SCREEN_HEIGHT
 
-            # Transform vertices
-            u1 = tri.texcoord1.u
-            v1 = tri.texcoord1.v
-
-            u2 = tri.texcoord2.u
-            v2 = tri.texcoord2.v
-
-            u3 = tri.texcoord3.u
-            v3 = tri.texcoord3.v
-
-            u1_interp = int(lerp(u1, u2, u3, 0.5))
-            v1_interp = int(lerp(v1, v2, v3, 0.5))
-
-            u2_interp = int(lerp(u1, u2, u3, 0.5))
-            v2_interp = int(lerp(v1, v2, v3, 0.5))
-
-            u3_interp = int(lerp(u1, u2, u3, 0.5))
-            v3_interp = int(lerp(v1, v2, v3, 0.5))
-
-            color1 = tuple(map(int, texture.get_at((u1_interp, v1_interp))[:3]))
-            color2 = tuple(map(int, texture.get_at((u2_interp, v2_interp))[:3]))
-            color3 = tuple(map(int, texture.get_at((u3_interp, v3_interp))[:3]))
 
             # Adjust coordinates based on camera position
-            translated.p1.x += self.camera_position.x
-            translated.p1.y += self.camera_position.y
-            translated.p1.z += self.camera_position.z
+            translated.p[0].x += self.camera_position.x
+            translated.p[0].y += self.camera_position.y
+            translated.p[0].z += self.camera_position.z
 
-            translated.p2.x += self.camera_position.x
-            translated.p2.y += self.camera_position.y
-            translated.p2.z += self.camera_position.z
+            translated.p[1].x += self.camera_position.x
+            translated.p[1].y += self.camera_position.y
+            translated.p[1].z += self.camera_position.z
 
-            translated.p3.x += self.camera_position.x
-            translated.p3.y += self.camera_position.y
-            translated.p3.z += self.camera_position.z
+            translated.p[2].x += self.camera_position.x
+            translated.p[2].y += self.camera_position.y
+            translated.p[2].z += self.camera_position.z
 
-            # Draw colored triangle
-            pygame.draw.polygon(screen,  color1,
-                                [(translated.p1.x, translated.p1.y),
-                                 (translated.p2.x, translated.p2.y),
-                                 (translated.p3.x, translated.p3.y)])
-            # draw lines between triangle points
-            pygame.draw.line(screen, (0, 0, 0), (translated.p1.x, translated.p1.y), (translated.p2.x, translated.p2.y))
-            pygame.draw.line(screen, (0, 0, 0), (translated.p2.x, translated.p2.y), (translated.p3.x, translated.p3.y))
-            pygame.draw.line(screen, (0, 0, 0), (translated.p3.x, translated.p3.y), (translated.p1.x, translated.p1.y))
+            # Triangle vertices & texture coords
+            v1, v2, v3 = tri.p
+            t1, t2, t3 = tri.t
+
+            for x in range(0, SCREEN_WIDTH):
+
+                for y in range(0, SCREEN_HEIGHT):
+                    # Barycentric coords
+                    alpha = (v2.y - v3.y) * (x - v3.x) + (v3.x - v2.x) * (y - v3.y)
+                    beta = (v3.y - v1.y) * (x - v3.x) + (v1.x - v3.x) * (y - v3.y)
+                    gamma = 1.0 - alpha - beta
+
+                    # Interpolate texture coords
+                    tex_u = t1.u * alpha + t2.u * beta + t3.u * gamma
+                    tex_v = t1.v * alpha + t2.v * beta + t3.v * gamma
+
+                    # Get texture dimensions
+                    tex_width = texture.get_width()
+                    tex_height = texture.get_height()
+
+                    # Cast to integers
+                    tex_u_int = int(tex_u)
+                    tex_v_int = int(tex_v)
+
+                    # Clamp to texture bounds
+                    tex_u_int = max(0, min(tex_u_int, tex_width - 1))
+                    tex_v_int = max(0, min(tex_v_int, tex_height - 1))
+
+                    # Sample texture
+                    color = texture.get_at((tex_u_int, tex_v_int))
+
+                     # Draw colored triangle
+            pygame.draw.polygon(screen, color,
+                                [(translated.p[0].x, translated.p[0].y),
+                                 (translated.p[1].x, translated.p[1].y),
+                                 (translated.p[2].x, translated.p[2].y)])
+
 
 
 engine = Engine()
