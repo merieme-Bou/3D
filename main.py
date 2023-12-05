@@ -8,6 +8,20 @@ SCREEN_HEIGHT = 600
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+# Load texture
+texture = pygame.image.load('texture/bricks.png').convert()
+
+
+def lerp(a, b, r, t):
+    return a * (1 - t) + b * t
+
+
+class TextureCoordinate:
+    def __init__(self, u, v):
+        self.u = u
+        self.v = v
+
+
 class Vec3D:
   def __init__(self, x, y, z):
     self.x = x
@@ -15,10 +29,15 @@ class Vec3D:
     self.z = z
 
 class Triangle:
-  def __init__(self, p1, p2, p3):
-    self.p1 = p1
-    self.p2 = p2
-    self.p3 = p3
+    def __init__(self, p1, p2, p3,
+                 texcoord1, texcoord2, texcoord3):
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+
+        self.texcoord1 = texcoord1
+        self.texcoord2 = texcoord2
+        self.texcoord3 = texcoord3
 class Mesh:
     def __init__(self):
         self.tris = []
@@ -44,26 +63,59 @@ class Engine:
 
 
  def init_cube(self):
+    texcoord1 = TextureCoordinate(0, 0)
+    texcoord2 = TextureCoordinate(0, 1)
+    texcoord3 = TextureCoordinate(1, 1)
+    texcoord4 = TextureCoordinate(0, 0)
+    texcoord5 = TextureCoordinate(1, 1)
+    texcoord6 = TextureCoordinate(1, 0)
+    texcoord7 = TextureCoordinate(1, 0)
+    texcoord8 = TextureCoordinate(1, 1)
+    texcoord9 = TextureCoordinate(1, 1)
     self.mesh_cube.tris = [
 
         #south
-         Triangle(Vec3D(0, 0, 0), Vec3D(0, 1, 0), Vec3D(1, 1, 0)),
-         Triangle(Vec3D(0, 0, 0), Vec3D(1, 1, 0), Vec3D(1, 0, 0)),
+         Triangle(Vec3D(0, 0, 0), Vec3D(0, 1, 0), Vec3D(1, 1, 0), texcoord1,
+        texcoord2,
+        texcoord3),
+         Triangle(Vec3D(0, 0, 0), Vec3D(1, 1, 0), Vec3D(1, 0, 0), texcoord4,
+        texcoord5,
+        texcoord6),
 #east
-         Triangle(Vec3D(1, 0, 0), Vec3D(1, 1, 0), Vec3D(1, 1, 1)),
-         Triangle(Vec3D(1, 0, 0), Vec3D(1, 1, 1), Vec3D(1, 0, 1)),
+         Triangle(Vec3D(1, 0, 0), Vec3D(1, 1, 0), Vec3D(1, 1, 1), texcoord7,
+        texcoord8,
+        texcoord9),
+         Triangle(Vec3D(1, 0, 0), Vec3D(1, 1, 1), Vec3D(1, 0, 1), texcoord1,
+        texcoord2,
+        texcoord3),
 #north
-         Triangle(Vec3D(1, 0, 1), Vec3D(1, 1, 1), Vec3D(0, 1, 1)),
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 1, 1), Vec3D(0, 0, 1)),
+         Triangle(Vec3D(1, 0, 1), Vec3D(1, 1, 1), Vec3D(0, 1, 1), texcoord1,
+        texcoord2,
+        texcoord3),
+         Triangle(Vec3D(1, 0, 1), Vec3D(0, 1, 1), Vec3D(0, 0, 1), texcoord1,
+        texcoord2,
+        texcoord3),
 
-         Triangle(Vec3D(0, 0, 1), Vec3D(0, 1, 1), Vec3D(0, 1, 0)),
-         Triangle(Vec3D(0, 0, 1), Vec3D(0, 1, 0), Vec3D(0, 0, 0)),
+         Triangle(Vec3D(0, 0, 1), Vec3D(0, 1, 1), Vec3D(0, 1, 0), texcoord1,
+        texcoord2,
+        texcoord3),
+         Triangle(Vec3D(0, 0, 1), Vec3D(0, 1, 0), Vec3D(0, 0, 0), texcoord1,
+        texcoord2,
+        texcoord3),
 
-         Triangle(Vec3D(0, 1, 0), Vec3D(0, 1, 1), Vec3D(1, 1, 1)),
-         Triangle(Vec3D(0, 1, 0), Vec3D(1, 1, 1), Vec3D(1, 1, 0)),
+         Triangle(Vec3D(0, 1, 0), Vec3D(0, 1, 1), Vec3D(1, 1, 1), texcoord1,
+        texcoord2,
+        texcoord3),
+         Triangle(Vec3D(0, 1, 0), Vec3D(1, 1, 1), Vec3D(1, 1, 0), texcoord1,
+        texcoord2,
+        texcoord3),
 
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 0, 1), Vec3D(0, 0, 0)),
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 0, 0), Vec3D(1, 0, 0))
+         Triangle(Vec3D(1, 0, 1), Vec3D(0, 0, 1), Vec3D(0, 0, 0), texcoord1,
+        texcoord2,
+        texcoord3),
+         Triangle(Vec3D(1, 0, 1), Vec3D(0, 0, 0), Vec3D(1, 0, 0), texcoord1,
+        texcoord2,
+        texcoord3)
      ]
 
  def update_projection_matrix(self):
@@ -78,6 +130,9 @@ class Engine:
         self.projection_matrix.m[3][2] = -far * near / (far - near)
         self.projection_matrix.m[2][3] = 1
         self.projection_matrix.m[3][3] = 0
+
+ def lerp(a, b, r, t):
+     return a * (1 - t) + b * t
 
  def render(self):
     # clear display
@@ -118,10 +173,14 @@ class Engine:
         self.multiply_matrix_vector(tri.p2, tri.p2, rotation_x)
         self.multiply_matrix_vector(tri.p3, tri.p3, rotation_x)
 
+
+
         # translate
         translated = Triangle(Vec3D(tri.p1.x, tri.p1.y, tri.p1.z+100),
                               Vec3D(tri.p2.x, tri.p2.y, tri.p2.z+100 ),
-                              Vec3D(tri.p3.x, tri.p3.y, tri.p3.z+100))
+                              Vec3D(tri.p3.x, tri.p3.y, tri.p3.z+100),   tri.texcoord1,
+   tri.texcoord2,
+   tri.texcoord3)
         # Use Cross-Product to get surface normal
         vCamera = Vec3D(0, 0, 0)  # Replace with your camera position
         normal = Vec3D(0, 0, 0)
@@ -168,21 +227,28 @@ class Engine:
             projected.p3.x *= 0.5 * SCREEN_WIDTH
             projected.p3.y *= 0.5 * SCREEN_HEIGHT
 
-            # Illumination
-            light_direction = Vec3D(0.0, 0.0, -1.0)
-            l = math.sqrt(
-                light_direction.x * light_direction.x + light_direction.y * light_direction.y + light_direction.z * light_direction.z)
-            light_direction.x /= l
-            light_direction.y /= l
-            light_direction.z /= l
+            # Transform vertices
+            u1 = tri.texcoord1.u
+            v1 = tri.texcoord1.v
 
-            # How similar is normal to light direction
-            dp = normal.x * light_direction.x + normal.y * light_direction.y + normal.z * light_direction.z
+            u2 = tri.texcoord2.u
+            v2 = tri.texcoord2.v
 
-            # Calculate RGB color based on the dot product
-            r = int(0 * max(0, dp))
-            g = int(255 * max(0, dp))
-            b = int(0* max(0, dp))
+            u3 = tri.texcoord3.u
+            v3 = tri.texcoord3.v
+
+            u1_interp = int(lerp(u1, u2, u3, 0.5))
+            v1_interp = int(lerp(v1, v2, v3, 0.5))
+
+            u2_interp = int(lerp(u1, u2, u3, 0.5))
+            v2_interp = int(lerp(v1, v2, v3, 0.5))
+
+            u3_interp = int(lerp(u1, u2, u3, 0.5))
+            v3_interp = int(lerp(v1, v2, v3, 0.5))
+
+            color1 = tuple(map(int, texture.get_at((u1_interp, v1_interp))[:3]))
+            color2 = tuple(map(int, texture.get_at((u2_interp, v2_interp))[:3]))
+            color3 = tuple(map(int, texture.get_at((u3_interp, v3_interp))[:3]))
 
             # Adjust coordinates based on camera position
             translated.p1.x += self.camera_position.x
@@ -198,7 +264,7 @@ class Engine:
             translated.p3.z += self.camera_position.z
 
             # Draw colored triangle
-            pygame.draw.polygon(screen, (r, g, b),
+            pygame.draw.polygon(screen,  color1,
                                 [(translated.p1.x, translated.p1.y),
                                  (translated.p2.x, translated.p2.y),
                                  (translated.p3.x, translated.p3.y)])
