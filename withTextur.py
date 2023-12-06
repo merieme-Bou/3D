@@ -1,5 +1,6 @@
 import pygame
 import math
+from meshUnits import Vec2D, Vec3D, Triangle, Mesh, Mat4x4
 
 pygame.init()
 
@@ -9,32 +10,8 @@ SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Load texture
-texture = pygame.image.load('texture/bricks.png').convert_alpha()
+texture = pygame.image.load('texture/acacia_door_bottom.png').convert_alpha()
 
-class Vec2D:
-    def __init__(self, u, v):
-        self.u = u
-        self.v = v
-
-
-class Vec3D:
-  def __init__(self, x, y, z, w):
-    self.x = x
-    self.y = y
-    self.z = z
-    self.w = w
-
-class Triangle:
-  def __init__(self, p0, p1, p2, t0, t1, t2):
-        self.p = [p0, p1, p2]
-        self.t = [t0, t1, t2]
-class Mesh:
-    def __init__(self):
-        self.tris = []
-
-class Mat4x4:
- def __init__(self):
-  self.m = [[0] * 4 for _ in range(4)]
 
 class Engine:
 
@@ -133,7 +110,7 @@ class Engine:
                               Vec3D(tri.p[2].x, tri.p[2].y, tri.p[2].z+100,tri.p[2].w),
                               Vec2D(tri.t[0].u, tri.t[0].v),
                               Vec2D(tri.t[1].u, tri.t[1].v),
-                              Vec2D(tri.t[2].u, tri.t[2].u))
+                              Vec2D(tri.t[2].u, tri.t[2].v))
         # Use Cross-Product to get surface normal
         vCamera = Vec3D(0, 0, 0,1)  # Replace with your camera position
         normal = Vec3D(0, 0, 0,1)
@@ -156,9 +133,10 @@ class Engine:
         normal.z /= l
 
         # Check condition
-        if (normal.x * (translated.p[0].x - vCamera.x) +
-                normal.y * (translated.p[0].y - vCamera.y) +
-                normal.z * (translated.p[0].z - vCamera.z) < 0.0):
+        if (normal.x * (vCamera.x - translated.p[0].x) +
+                normal.y * (vCamera.y - translated.p[0].y) +
+                normal.z * (vCamera.z - translated.p[0].z) < 0.0):
+
             # project
             self.multiply_matrix_vector(translated.p[0], translated.p[0], self.projection_matrix)
             self.multiply_matrix_vector(translated.p[1], translated.p[1], self.projection_matrix)
@@ -199,16 +177,23 @@ class Engine:
             t1, t2, t3 = tri.t
 
             for x in range(0, SCREEN_WIDTH):
-
                 for y in range(0, SCREEN_HEIGHT):
                     # Barycentric coords
                     alpha = (v2.y - v3.y) * (x - v3.x) + (v3.x - v2.x) * (y - v3.y)
                     beta = (v3.y - v1.y) * (x - v3.x) + (v1.x - v3.x) * (y - v3.y)
                     gamma = 1.0 - alpha - beta
 
+                    # Perspective correction
+                    perspective_correction = 1 / (
+                                alpha / translated.p[0].w + beta / translated.p[1].w + gamma / translated.p[2].w)
+
                     # Interpolate texture coords
-                    tex_u = t1.u * alpha + t2.u * beta + t3.u * gamma
-                    tex_v = t1.v * alpha + t2.v * beta + t3.v * gamma
+                    tex_u = perspective_correction * (
+                                alpha * t1.u / translated.p[0].w + beta * t2.u / translated.p[1].w + gamma * t3.u /
+                                translated.p[2].w)
+                    tex_v = perspective_correction * (
+                                alpha * t1.v / translated.p[0].w + beta * t2.v / translated.p[1].w + gamma * t3.v /
+                                translated.p[2].w)
 
                     # Get texture dimensions
                     tex_width = texture.get_width()
@@ -225,48 +210,60 @@ class Engine:
                     # Sample texture
                     color = texture.get_at((tex_u_int, tex_v_int))
 
-                     # Draw colored triangle
-            pygame.draw.polygon(screen, color,
-                                [(translated.p[0].x, translated.p[0].y),
-                                 (translated.p[1].x, translated.p[1].y),
-                                 (translated.p[2].x, translated.p[2].y)])
+                    # Draw colored triangle
+                    pygame.draw.polygon(screen, color,
+                                        [(translated.p[0].x, translated.p[0].y),
+                                         (translated.p[1].x, translated.p[1].y),
+                                         (translated.p[2].x, translated.p[2].y)])
+
+def main():
+    engine = Engine()
+
+    running = True
+    frame_count = 0
+    start_time = pygame.time.get_ticks()
+    clock = pygame.time.Clock()
+    while running:
+        clock.tick(40)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        # Camera controls (you can customize these based on your needs)
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            engine.camera_position.x -= 1
+        if keys[pygame.K_RIGHT]:
+            engine.camera_position.x += 1
+        if keys[pygame.K_UP]:
+            engine.camera_position.y -= 1
+        if keys[pygame.K_DOWN]:
+            engine.camera_position.y += 1
+
+        # Camera zooming
+        if keys[pygame.K_w]:
+            engine.fov -= 1  # Increase field of view for zooming in
+        if keys[pygame.K_s]:
+            engine.fov += 1  # Decrease field of view for zooming out
+
+        # Update the projection matrix with the new FOV
+        engine.update_projection_matrix()
+
+        # Render the updated scene
+        engine.init_cube()
+        engine.render()
+
+        # Update the display
+        pygame.display.update()
+        # Calculate and print the FPS every second
+        frame_count += 1
+        elapsed_time = pygame.time.get_ticks() - start_time
+        if elapsed_time >= 1000:
+            fps = frame_count / (elapsed_time / 1000)
+            print(f"FPS: {fps:.2f}")
+            frame_count = 0
+            start_time = pygame.time.get_ticks()
+    pygame.quit()
 
 
-
-engine = Engine()
-
-running = True
-clock = pygame.time.Clock()
-while running:
- clock.tick(40)
- for event in pygame.event.get():
-    if event.type == pygame.QUIT:
-      running = False
- # Camera controls (you can customize these based on your needs)
- keys = pygame.key.get_pressed()
- if keys[pygame.K_LEFT]:
-          engine.camera_position.x -= 1
- if keys[pygame.K_RIGHT]:
-          engine.camera_position.x += 1
- if keys[pygame.K_UP]:
-          engine.camera_position.y -= 1
- if keys[pygame.K_DOWN]:
-          engine.camera_position.y += 1
-
-
-    # Camera zooming
- if keys[pygame.K_w]:
-        engine.fov -= 1  # Increase field of view for zooming in
- if keys[pygame.K_s]:
-        engine.fov += 1  # Decrease field of view for zooming out
-
- # Update the projection matrix with the new FOV
- engine.update_projection_matrix()
-
-    # Render the updated scene
- engine.init_cube()
- engine.render()
-
-    # Update the display
- pygame.display.update()
-pygame.quit()
+if __name__ == "__main__":
+    main()
