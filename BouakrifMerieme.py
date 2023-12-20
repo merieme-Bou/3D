@@ -1,247 +1,207 @@
 import pygame
-import math
+import numpy as np
+import sys
+from utils import *
 
 pygame.init()
+height = 600
+width = 1000
+screen = pygame.display.set_mode((width, height))
+f = 2
+alpha = 100
+beta = 100
 
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 600
-
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
-class Vec3D:
-  def __init__(self, x, y, z):
-    self.x = x
-    self.y = y
-    self.z = z
-
-class Triangle:
-  def __init__(self, p1, p2, p3):
-    self.p1 = p1
-    self.p2 = p2
-    self.p3 = p3
-class Mesh:
-    def __init__(self):
-        self.tris = []
-
-class Mat4x4:
- def __init__(self):
-  self.m = [[0] * 4 for _ in range(4)]
-
-class Engine:
-
- def __init__(self):
-  self.mesh_cube = Mesh()
-  self.projection_matrix = Mat4x4()
-  self.theta = 0
-  self.camera_position = Vec3D(0, 0, 0)
-  self.fov = 90  # Initial field of view
-
- def multiply_matrix_vector(self, v_in, v_out, m):
-    v_out.x = v_in.x * m.m[0][0] + v_in.y * m.m[1][0] + v_in.z * m.m[2][0] + m.m[3][0]
-    v_out.y = v_in.x * m.m[0][1] + v_in.y * m.m[1][1] + v_in.z * m.m[2][1] + m.m[3][1]
-    v_out.z = v_in.x * m.m[0][2] + v_in.y * m.m[1][2] + v_in.z * m.m[2][2] + m.m[3][2]
+grass_top = pygame.image.load('texture/green.png')
+grass = pygame.image.load('texture/grass.png')
+green = pygame.image.load('texture/green.png')
 
 
+class Cube:
+    def __init__(self, center, size, top_texture, side_texture, bottom_texture):
+        self.center = np.array(center)
+        self.size = size
+        self.top_texture = top_texture
+        self.side_texture = side_texture
+        self.bottom_texture = bottom_texture
+        self.points = self.generate_points()
 
- def init_cube(self):
-    self.mesh_cube.tris = [
-
-        #south
-         Triangle(Vec3D(0, 0, 0), Vec3D(0, 1, 0), Vec3D(1, 1, 0)),
-         Triangle(Vec3D(0, 0, 0), Vec3D(1, 1, 0), Vec3D(1, 0, 0)),
-#east
-         Triangle(Vec3D(1, 0, 0), Vec3D(1, 1, 0), Vec3D(1, 1, 1)),
-         Triangle(Vec3D(1, 0, 0), Vec3D(1, 1, 1), Vec3D(1, 0, 1)),
-#north
-         Triangle(Vec3D(1, 0, 1), Vec3D(1, 1, 1), Vec3D(0, 1, 1)),
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 1, 1), Vec3D(0, 0, 1)),
-
-         Triangle(Vec3D(0, 0, 1), Vec3D(0, 1, 1), Vec3D(0, 1, 0)),
-         Triangle(Vec3D(0, 0, 1), Vec3D(0, 1, 0), Vec3D(0, 0, 0)),
-
-         Triangle(Vec3D(0, 1, 0), Vec3D(0, 1, 1), Vec3D(1, 1, 1)),
-         Triangle(Vec3D(0, 1, 0), Vec3D(1, 1, 1), Vec3D(1, 1, 0)),
-
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 0, 1), Vec3D(0, 0, 0)),
-         Triangle(Vec3D(1, 0, 1), Vec3D(0, 0, 0), Vec3D(1, 0, 0))
-     ]
-
- def update_projection_matrix(self):
-        near = 0.1
-        far = 100
-        aspect = SCREEN_HEIGHT / SCREEN_WIDTH
-        fov_rad = 1 / math.tan(math.radians(self.fov) / 2)
-
-        self.projection_matrix.m[0][0] = aspect * fov_rad
-        self.projection_matrix.m[1][1] = fov_rad
-        self.projection_matrix.m[2][2] = far / (far - near)
-        self.projection_matrix.m[3][2] = -far * near / (far - near)
-        self.projection_matrix.m[2][3] = 1
-        self.projection_matrix.m[3][3] = 0
-
- def render(self):
-    # clear display
-    screen.fill((0, 0, 0))
-
-    # rotation matrices
-    rotation_z = Mat4x4()
-    rotation_x = Mat4x4()
-
-    self.theta += 0.005
-
-    # Z rotation
-    rotation_z.m[0][0] = math.cos(self.theta)
-    rotation_z.m[0][1] = -math.sin(self.theta)
-    rotation_z.m[1][0] = math.sin(self.theta)
-    rotation_z.m[1][1] = math.cos(self.theta)
-    rotation_z.m[2][2] = 1
-    rotation_z.m[3][3] = 1
-
-    # X rotation
-    rotation_x.m[0][0] = 1
-    rotation_x.m[1][1] = math.cos(self.theta)
-    rotation_x.m[1][2] = -math.sin(self.theta)
-    rotation_x.m[2][1] = math.sin(self.theta)
-    rotation_x.m[2][2] = math.cos(self.theta)
-    rotation_x.m[3][3] = 1
+    def generate_points(self):
+        points = np.array([
+            [-1, -1, -1, 1],
+            [1, -1, -1, 1],
+            [1, 1, -1, 1],
+            [-1, 1, -1, 1],
+            [-1, -1, 1, 1],
+            [1, -1, 1, 1],
+            [1, 1, 1, 1],
+            [-1, 1, 1, 1]
+        ]).T
+        transform_matrix = np.array([
+            [self.size, 0, 0, self.center[0]],
+            [0, self.size, 0, self.center[1]],
+            [0, 0, self.size, self.center[2]]
+        ])
+        return np.dot(transform_matrix, points).T
 
 
-    # draw triangles
-    for tri in self.mesh_cube.tris:
-        # rotate in Z
-        self.multiply_matrix_vector(tri.p1, tri.p1, rotation_z)
-        self.multiply_matrix_vector(tri.p2, tri.p2, rotation_z)
-        self.multiply_matrix_vector(tri.p3, tri.p3, rotation_z)
-
-        # rotate in X
-        self.multiply_matrix_vector(tri.p1, tri.p1, rotation_x)
-        self.multiply_matrix_vector(tri.p2, tri.p2, rotation_x)
-        self.multiply_matrix_vector(tri.p3, tri.p3, rotation_x)
-
-        # translate
-        translated = Triangle(Vec3D(tri.p1.x, tri.p1.y, tri.p1.z+100),
-                              Vec3D(tri.p2.x, tri.p2.y, tri.p2.z+100 ),
-                              Vec3D(tri.p3.x, tri.p3.y, tri.p3.z+100))
-        # Use Cross-Product to get surface normal
-        vCamera = Vec3D(0, 0, 0)  # Replace with your camera position
-        normal = Vec3D(0, 0, 0)
-        line1 = Vec3D(translated.p2.x - translated.p1.x,
-                      translated.p2.y - translated.p1.y,
-                      translated.p2.z - translated.p1.z)
-
-        line2 = Vec3D(translated.p3.x - translated.p1.x,
-                      translated.p3.y - translated.p1.y,
-                      translated.p3.z - translated.p1.z)
-
-        normal.x = line1.y * line2.z - line1.z * line2.y
-        normal.y = line1.z * line2.x - line1.x * line2.z
-        normal.z = line1.x * line2.y - line1.y * line2.x
-
-        # Normalize the normal
-        l = math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
-        normal.x /= l
-        normal.y /= l
-        normal.z /= l
-
-        # Check condition
-        if (normal.x * (translated.p1.x - vCamera.x) +
-                normal.y * (translated.p1.y - vCamera.y) +
-                normal.z * (translated.p1.z - vCamera.z) < 0.0):
-            # project
-            self.multiply_matrix_vector(translated.p1, translated.p1, self.projection_matrix)
-            self.multiply_matrix_vector(translated.p2, translated.p2, self.projection_matrix)
-            self.multiply_matrix_vector(translated.p3, translated.p3, self.projection_matrix)
-
-            # scale to view
-            projected = translated
-            projected.p1.x += 1
-            projected.p1.y += 1
-            projected.p2.x += 1
-            projected.p2.y += 1
-            projected.p3.x += 1
-            projected.p3.y += 1
-
-            projected.p1.x *= 0.5 * SCREEN_WIDTH
-            projected.p1.y *= 0.5 * SCREEN_HEIGHT
-            projected.p2.x *= 0.5 * SCREEN_WIDTH
-            projected.p2.y *= 0.5 * SCREEN_HEIGHT
-            projected.p3.x *= 0.5 * SCREEN_WIDTH
-            projected.p3.y *= 0.5 * SCREEN_HEIGHT
-
-            # Illumination
-            light_direction = Vec3D(0.0, 0.0, -1.0)
-            l = math.sqrt(
-                light_direction.x * light_direction.x + light_direction.y * light_direction.y + light_direction.z * light_direction.z)
-            light_direction.x /= l
-            light_direction.y /= l
-            light_direction.z /= l
-
-            # How similar is normal to light direction
-            dp = normal.x * light_direction.x + normal.y * light_direction.y + normal.z * light_direction.z
-
-            # Calculate RGB color based on the dot product
-            r = int(0 * max(0, dp))
-            g = int(255 * max(0, dp))
-            b = int(0* max(0, dp))
-
-            # Adjust coordinates based on camera position
-            translated.p1.x += self.camera_position.x
-            translated.p1.y += self.camera_position.y
-            translated.p1.z += self.camera_position.z
-
-            translated.p2.x += self.camera_position.x
-            translated.p2.y += self.camera_position.y
-            translated.p2.z += self.camera_position.z
-
-            translated.p3.x += self.camera_position.x
-            translated.p3.y += self.camera_position.y
-            translated.p3.z += self.camera_position.z
-
-            # Draw colored triangle
-            pygame.draw.polygon(screen, (r, g, b),
-                                [(translated.p1.x, translated.p1.y),
-                                 (translated.p2.x, translated.p2.y),
-                                 (translated.p3.x, translated.p3.y)])
-            # draw lines between triangle points
-            pygame.draw.line(screen, (0, 0, 0), (translated.p1.x, translated.p1.y), (translated.p2.x, translated.p2.y))
-            pygame.draw.line(screen, (0, 0, 0), (translated.p2.x, translated.p2.y), (translated.p3.x, translated.p3.y))
-            pygame.draw.line(screen, (0, 0, 0), (translated.p3.x, translated.p3.y), (translated.p1.x, translated.p1.y))
+def transform_points(points):
+    points_x = points[..., 0]
+    points_y = points[..., 1]
+    points_z = (points[..., 2])
+    points_z[points_z < 0.001] = 0.001
+    return np.column_stack((points_x / points_z, points_y / points_z, np.ones(len(points))))
 
 
-engine = Engine()
+def save_surfaces(transformed_coordinates):
+    return sorted([
+        [[0, np.linalg.norm(transformed_coordinates[0]), transformed_coordinates[0]],
+         [1, np.linalg.norm(transformed_coordinates[1]), transformed_coordinates[1]],
+         [2, np.linalg.norm(transformed_coordinates[2]), transformed_coordinates[2]],
+         [3, np.linalg.norm(transformed_coordinates[3]), transformed_coordinates[3]]],
+        [[4, np.linalg.norm(transformed_coordinates[4]), transformed_coordinates[4]],
+         [5, np.linalg.norm(transformed_coordinates[5]), transformed_coordinates[5]],
+         [6, np.linalg.norm(transformed_coordinates[6]), transformed_coordinates[6]],
+         [7, np.linalg.norm(transformed_coordinates[7]), transformed_coordinates[7]]],
+        [[0, np.linalg.norm(transformed_coordinates[0]), transformed_coordinates[0]],
+         [1, np.linalg.norm(transformed_coordinates[1]), transformed_coordinates[1]],
+         [5, np.linalg.norm(transformed_coordinates[5]), transformed_coordinates[5]],
+         [4, np.linalg.norm(transformed_coordinates[4]), transformed_coordinates[4]]],  # top
+        [[2, np.linalg.norm(transformed_coordinates[2]), transformed_coordinates[2]],
+         [3, np.linalg.norm(transformed_coordinates[3]), transformed_coordinates[3]],
+         [7, np.linalg.norm(transformed_coordinates[7]), transformed_coordinates[7]],
+         [6, np.linalg.norm(transformed_coordinates[6]), transformed_coordinates[6]]],  # bottom
+        [[5, np.linalg.norm(transformed_coordinates[5]), transformed_coordinates[5]],
+         [1, np.linalg.norm(transformed_coordinates[1]), transformed_coordinates[1]],
+         [2, np.linalg.norm(transformed_coordinates[2]), transformed_coordinates[2]],
+         [6, np.linalg.norm(transformed_coordinates[6]), transformed_coordinates[6]], ],
+        [[4, np.linalg.norm(transformed_coordinates[4]), transformed_coordinates[4]],
+         [0, np.linalg.norm(transformed_coordinates[0]), transformed_coordinates[0]],
+         [3, np.linalg.norm(transformed_coordinates[3]), transformed_coordinates[3]],
+         [7, np.linalg.norm(transformed_coordinates[7]), transformed_coordinates[7]], ]
+    ], key=lambda x: np.mean([i[1] for i in x]), reverse=True)[-3:]
 
-running = True
-clock = pygame.time.Clock()
-while running:
- clock.tick(40)
- for event in pygame.event.get():
-    if event.type == pygame.QUIT:
-      running = False
- # Camera controls (you can customize these based on your needs)
- keys = pygame.key.get_pressed()
- if keys[pygame.K_LEFT]:
-          engine.camera_position.x -= 1
- if keys[pygame.K_RIGHT]:
-          engine.camera_position.x += 1
- if keys[pygame.K_UP]:
-          engine.camera_position.y -= 1
- if keys[pygame.K_DOWN]:
-          engine.camera_position.y += 1
+
+def lerp(p1, p2, f):
+    return p1 + f * (p2 - p1)
 
 
-    # Camera zooming
- if keys[pygame.K_w]:
-        engine.fov -= 1  # Increase field of view for zooming in
- if keys[pygame.K_s]:
-        engine.fov += 1  # Decrease field of view for zooming out
+def lerp2d(p1, p2, f):
+    return tuple(lerp(p1[i], p2[i], f) for i in range(2))
 
- # Update the projection matrix with the new FOV
- engine.update_projection_matrix()
 
-    # Render the updated scene
- engine.init_cube()
- engine.render()
+def draw_quad(surface, quad, img, intensity):
+    points = dict()
+    w = img.get_size()[0]
+    h = img.get_size()[1]
 
-    # Update the display
- pygame.display.update()
-pygame.quit()
+    for i in range(h + 1):
+        b = lerp2d(quad[1], quad[2], i / h)
+        c = lerp2d(quad[0], quad[3], i / h)
+        for u in range(w + 1):
+            a = lerp2d(c, b, u / w)
+            points[(u, i)] = a
+    for x in range(w):
+        for y in range(h):
+            pygame.draw.polygon(
+                surface,
+                np.array(img.get_at((x, y))) * intensity,
+                [points[(a, b)] for a, b in [(x, y), (x, y + 1), (x + 1, y + 1), (x + 1, y)]]
+            )
+
+
+def draw_cube(screen, cube, angle_x_z, angle_y_z, player_position, f, K, side, top, bottom, intensity=None):
+    global rotaion_xz, rotaion_yz
+    transformed_points = np.dot(np.dot(cube.points - player_position, rotaion_xz[int(angle_x_z) % 360]),
+                                rotaion_yz[int(angle_y_z) % 360])
+    surfaces = save_surfaces(transformed_points)
+    points_2d = np.dot(transform_points(transformed_points), K)
+    f = 0
+    for index, surface in enumerate(surfaces):
+        if surface[0][2][2] > f and surface[1][2][2] > f and surface[2][2][2] > f and surface[3][2][2] > f:
+            if intensity is None:
+                intensity = 1
+            p = []
+            for point, _, _ in surface:
+                p.append(points_2d[point])
+            if surface[0][0] == 0 and surface[1][0] == 1 and surface[2][0] == 5 and surface[3][0] == 4:
+                draw_quad(screen, p, top, intensity)
+            elif surface[0][0] == 2 and surface[1][0] == 3 and surface[2][0] == 7 and surface[3][0] == 6:
+                draw_quad(screen, p, bottom, intensity)
+            else:
+                draw_quad(screen, p, side, intensity)
+
+
+def main():
+    cubes = [
+        Cube(center=(-2, 2, -2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(0, 2, -2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(2, 2, -2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(-2, 2, 0), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(0, 2, 0), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(2, 2, 0), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(-2, 2, 2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(0, 2, 2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(2, 2, 2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+
+        Cube(center=(-2, 0, -2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(0, 0, -2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(2, 0, -2), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+        Cube(center=(-2, 0, 0), size=2, top_texture=green, side_texture=grass, bottom_texture=grass),
+
+    ]
+
+    camera_position = [0, 0, -10]
+    xz = 0
+    yz = 0
+    u0 = width // 2
+    v0 = height // 2
+    K = np.array([[f * alpha, 0, u0], [0, f * beta, v0]]).T
+    jump_force = 0
+    jump_reduce = 0.1
+    gravity = 1
+    clock = pygame.time.Clock()
+
+    while True:
+        screen.fill((0, 0, 0))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_w]:
+            camera_position[2] += 1
+            camera_position[0] -= 1
+        if keys[pygame.K_s]:
+            camera_position[2] -= 1
+            camera_position[0] += 1
+
+        if keys[pygame.K_LEFT]:
+            xz += 1
+        if keys[pygame.K_RIGHT]:
+            xz -= 1
+        if keys[pygame.K_UP]:
+            camera_position[1] += 1
+        if keys[pygame.K_DOWN]:
+            camera_position[1] -= 1
+
+        if keys[pygame.K_SPACE]:
+            if jump_force == 0:
+                jump_force = 2
+        jump_force = max(0, jump_force - jump_reduce)
+        camera_position[1] = min(0, camera_position[1] - jump_force + gravity)
+
+        xz %= 180
+        yz %= 180
+        for cube in cubes:
+            draw_cube(screen, cube, xz, yz, camera_position, f, K, cube.side_texture, cube.top_texture,
+                      cube.bottom_texture)
+        clock.tick(60)
+        pygame.display.set_caption("FPS: " + str(round(clock.get_fps())))
+        pygame.display.update()
+
+
+if __name__ == '__main__':
+    main()
+
